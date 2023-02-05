@@ -92,7 +92,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionInternal {
     });
 
     const commandDelete = vscode.commands.registerCommand("extension.dired.delete", () => {
-        vscode.window.showInformationMessage("Delete this file ?", {modal: true}, "Yes", "No").then(item => {
+        vscode.window.showInformationMessage("Delete this file/directory ?", {modal: true}, "Yes", "No").then(item => {
                 if (item == "Yes") {
                     provider.delete();
                 }

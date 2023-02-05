@@ -96,9 +96,15 @@ export default class DiredProvider implements vscode.TextDocumentContentProvider
             return;
         }
         if (this.dirname) {
+            const src = path.join(this.dirname, f.fileName);
             const n = path.join(this.dirname, newName);
-            this.reload();
-            vscode.window.showInformationMessage(`${f.fileName} is renamed to ${n}`);
+            try {
+                fs.renameSync(src, n);
+                this.reload();
+                vscode.window.showInformationMessage(`${f.fileName} is renamed to ${n}`);
+            } catch (err) {
+                vscode.window.showInformationMessage(`copy failed: ${JSON.stringify(err)}`);
+            }            
         }
     }
 
@@ -108,21 +114,46 @@ export default class DiredProvider implements vscode.TextDocumentContentProvider
             return;
         }
         if (this.dirname) {
+            const src = path.join(this.dirname, f.fileName);
             const n = path.join(this.dirname, newName);
-            vscode.window.showInformationMessage(`${f.fileName} is copied to ${n}`);
+            try {
+                fs.cpSync(src, n, {recursive: true});
+                this.reload();
+                vscode.window.showInformationMessage(`${f.fileName} is copied to ${n}`);
+            } catch (err) {
+                vscode.window.showInformationMessage(`copy failed: ${JSON.stringify(err)}`);
+            }
         }
     }
 
     delete() {
         const f = this.getFile();
+        console.log(`elete(): ${f}`);
         if (!f) {
             return;
         }
         if (this.dirname) {
             const n = path.join(this.dirname, f.fileName);
-            fs.unlinkSync(n);
-            this.reload();
-            vscode.window.showInformationMessage(`${n} was deleted`);
+            const stat = fs.lstatSync(n);
+            if (stat.isDirectory()) {
+                try {
+                    fs.rmdirSync(n);
+                } catch (err) {
+                    vscode.window.showInformationMessage(`Delete ${f.fileName} directory recursively?`, {modal: true}, "Yes", "No").then(item => {
+                        if (item == "Yes") {
+                            fs.rmdirSync(n, {recursive: true});
+                        } else {
+                            vscode.window.showErrorMessage(`Did/Could not delete ${n}: ${err}`);
+                        }
+                        this.reload();
+                        vscode.window.showInformationMessage(`${n} was deleted`);
+                    });
+                }
+            } else {
+                fs.unlinkSync(n);
+                this.reload();
+                vscode.window.showInformationMessage(`${n} was deleted`);
+            }
         }
     }
 
@@ -209,7 +240,7 @@ export default class DiredProvider implements vscode.TextDocumentContentProvider
         return <FileItem[]>files.map((filename) => {
             const p = path.join(dirname, filename);
             try {
-                const stat = fs.statSync(p);
+                const stat = fs.lstatSync(p);
                 return FileItem.create(dirname, filename, stat);
             } catch (err) {
                 vscode.window.showErrorMessage(`Could not get stat of ${p}: ${err}`);
