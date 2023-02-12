@@ -98,8 +98,13 @@ export default class DiredProvider implements vscode.TextDocumentContentProvider
         if (this.dirname) {
             const src = path.join(this.dirname, f.fileName);
             const n = path.join(this.dirname, newName);
+            const stat = fs.lstatSync(n);
             try {
-                fs.renameSync(src, n);
+                if (stat.isDirectory()) {
+                    fs.renameSync(src, path.join(n, f.fileName));
+                } else {
+                    fs.renameSync(src, n);
+                }
                 this.reload();
                 vscode.window.showInformationMessage(`${f.fileName} is renamed to ${n}`);
             } catch (err) {
@@ -116,8 +121,13 @@ export default class DiredProvider implements vscode.TextDocumentContentProvider
         if (this.dirname) {
             const src = path.join(this.dirname, f.fileName);
             const n = path.join(this.dirname, newName);
+            const stat = fs.lstatSync(n);
             try {
-                fs.cpSync(src, n, {recursive: true});
+                if (stat.isDirectory()) {
+                    fs.cpSync(src, path.join(n, f.fileName), {recursive: true});
+                } else {
+                    fs.cpSync(src, n, {recursive: true});
+                }
                 this.reload();
                 vscode.window.showInformationMessage(`${f.fileName} is copied to ${n}`);
             } catch (err) {
@@ -308,7 +318,7 @@ export default class DiredProvider implements vscode.TextDocumentContentProvider
             }
         } else {
             start = at.selection.start.line;
-            end = at.selection.end.line;
+            end = at.selection.end.line + 1;
         }
 
         for (let i = start; i < end; i++) {
